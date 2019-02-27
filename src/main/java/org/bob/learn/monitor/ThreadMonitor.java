@@ -5,10 +5,7 @@ import org.bob.learn.common.constant.WebServerType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StopWatch;
 
 import javax.annotation.PostConstruct;
 import java.lang.management.ManagementFactory;
@@ -20,25 +17,48 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 @Slf4j
-@EnableScheduling
 @Component
 public final class ThreadMonitor {
 
+    /**
+     * Undertow服务器工作线程名称正则表达式
+     */
     private final static String  WORK_THREAD_NAME_PATTERN_FOR_UNDERTOW = "^XNIO-(.*)(task)(.*)";
 
+    /**
+     * Tomcat服务器工作线程名称正则表达式
+     */
     private final static String  WORK_THREAD_NAME_PATTERN_FOR_TOMCAT = "^http-nio-(.*)(exec)(.*)";
 
+    /**
+     * 服务器类型与服务器工作线程名称正则表达式映射
+     */
     private final static Map<WebServerType,String> WEB_SERVER_WORK_THREAD_NAME_PATTERN_MAP = new HashMap<>(4);
 
+    /**
+     * JVM线程管理器
+     */
     private final static ThreadMXBean THREAD_MX_BEAN;
 
+    /**
+     * 服务器工作线程名称模式
+     */
     private final static Pattern WEB_SERVER_WORK_THREAD_NAME_PATTERN;
 
+    /**
+     * 服务器工作线程数上限
+     */
     private static double SERVER_WORK_THREAD_MAX_LIMIT;
 
+    /**
+     * 服务器忙碌工作线程数上限
+     */
     private static double SERVER_BUSY_WORK_THREAD_NUM_LIMIT;
 
-    private static volatile boolean systemBusyFlag = false;
+    /**
+     * 服务器过载标识
+     */
+    private static volatile boolean systemOverloadFlag = false;
 
     static {
         WEB_SERVER_WORK_THREAD_NAME_PATTERN_MAP.put(WebServerType.TOMCAT,WORK_THREAD_NAME_PATTERN_FOR_TOMCAT);
@@ -72,39 +92,25 @@ public final class ThreadMonitor {
     }
 
 
-    public static void checkForSystemBusy() {
+    public static void checkForSystemOverload() {
         ThreadInfo[] threadInfoArray = THREAD_MX_BEAN.getThreadInfo(THREAD_MX_BEAN.getAllThreadIds());
         if(threadInfoArray!=null) {
             double busyThreadNum = Arrays.asList(threadInfoArray).stream().filter(ThreadMonitor::matchBusyWorkThreat).count();
             if(busyThreadNum>SERVER_BUSY_WORK_THREAD_NUM_LIMIT){
-                systemBusyFlag = true;
+                systemOverloadFlag = true;
                 log.info("http忙碌工作线程数为[{}]，超过阈值[{}],将执行接口降级逻辑",busyThreadNum,SERVER_BUSY_WORK_THREAD_NUM_LIMIT);
             }else {
-                systemBusyFlag = false;
+                systemOverloadFlag = false;
                 log.info("http忙线程数为[{}]，未超过阈值[{}],将执行接口正常逻辑",busyThreadNum,SERVER_BUSY_WORK_THREAD_NUM_LIMIT);
             }
         }
     }
 
-    public static boolean isSystemBusy() {
-        return systemBusyFlag;
+    public static boolean isSystemOverload() {
+        return systemOverloadFlag;
     }
 
     private static boolean matchBusyWorkThreat(ThreadInfo threadInfo) {
-        return  WEB_SERVER_WORK_THREAD_NAME_PATTERN.matcher(threadInfo.getThreadName()).find()&& Thread.State.RUNNABLE.name().equalsIgnoreCase(threadInfo.getThreadState().name());
-    }
-
-
-    @Scheduled(cron = "0 9 14 * * ?")
-    public void dd()
-    {
-        int i=0;
-        StopWatch sw = new StopWatch();
-        sw.start();
-        while (i<100000){
-            ThreadMonitor.checkForSystemBusy();
-        }
-        sw.stop();
-        log.info(sw.shortSummary()+"");
+        return WEB_SERVER_WORK_THREAD_NAME_PATTERN.matcher(threadInfo.getThreadName()).find()&& Thread.State.RUNNABLE.name().equalsIgnoreCase(threadInfo.getThreadState().name());
     }
 }

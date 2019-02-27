@@ -33,8 +33,8 @@ public class DegradeFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        ThreadMonitor.checkForSystemBusy();
-        if(ThreadMonitor.isSystemBusy()) {
+        ThreadMonitor.checkForSystemOverload();
+        if(ThreadMonitor.isSystemOverload()) {
             HttpServletRequest request = (HttpServletRequest)servletRequest;
             servletRequest.getRequestDispatcher(DEGRADE_PATH_PREFIX+request.getServletPath()).forward(servletRequest, servletResponse);
         }else {
