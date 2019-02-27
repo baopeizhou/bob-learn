@@ -7,7 +7,7 @@ server:
         rotate: true
         dir: /apprun/logs/bob-learn/
       io-threads: 8
-      worker-threads: 64
       direct-buffers: true
       buffer-size: 1024
+
 #Spring Config

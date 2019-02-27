@@ -1,5 +1,6 @@
 package org.bob.learn.web.filter;
 
+import org.bob.learn.monitor.ThreadMonitor;
 import org.bob.learn.util.SystemUtils;
 
 import javax.servlet.Filter;
@@ -32,7 +33,8 @@ public class DegradeFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        if(SystemUtils.isSystemOverload()) {
+        ThreadMonitor.checkForSystemBusy();
+        if(ThreadMonitor.isSystemBusy()) {
             HttpServletRequest request = (HttpServletRequest)servletRequest;
             servletRequest.getRequestDispatcher(DEGRADE_PATH_PREFIX+request.getServletPath()).forward(servletRequest, servletResponse);
         }else {
