@@ -5,6 +5,7 @@ import org.bob.learn.common.constant.WebServerType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -19,6 +20,8 @@ import java.util.regex.Pattern;
 @Slf4j
 @Component
 public final class ThreadMonitor {
+
+
 
     /**
      * Undertow服务器工作线程名称正则表达式
@@ -83,10 +86,10 @@ public final class ThreadMonitor {
             throw new IllegalStateException("不支持的web服务器");
         }
         if(WebServerType.TOMCAT.equals(webServerType)){
-            SERVER_WORK_THREAD_MAX_LIMIT =  serverProperties.getTomcat().getMaxThreads();
+            SERVER_WORK_THREAD_MAX_LIMIT =  Integer.valueOf(serverProperties.getTomcat().getMaxThreads()).longValue();
         }
         if(WebServerType.UNDERTOW.equals(WebServerType.serverType())){
-            SERVER_WORK_THREAD_MAX_LIMIT =  serverProperties.getUndertow().getWorkerThreads()!=null? serverProperties.getUndertow().getWorkerThreads(): Math.max(Runtime.getRuntime().availableProcessors(), 2) *8;
+            SERVER_WORK_THREAD_MAX_LIMIT =  serverProperties.getUndertow().getWorkerThreads()!=null? serverProperties.getUndertow().getWorkerThreads().longValue(): Math.max(Runtime.getRuntime().availableProcessors(), 2) *8;
         }
         SERVER_BUSY_WORK_THREAD_NUM_LIMIT = SERVER_WORK_THREAD_MAX_LIMIT * busyRatioLimit;
     }
